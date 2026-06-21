@@ -42,7 +42,7 @@ function pickBlankedIndices(
   const nonKeywordIndices: number[] = [];
 
   words.forEach((w, i) => {
-    const stripped = w.replace(/[^a-zA-Z']/g, "").toLowerCase();
+    const stripped = w.replace(/[^a-zA-Z0-9']/g, "").toLowerCase();
     if (keywordLower.includes(stripped)) {
       keywordIndices.push(i);
     } else {
@@ -106,10 +106,14 @@ export function useVerseGame() {
 
   const buildFillRound = useCallback(
     (verse: Verse, round: number): FillRoundState => {
-      const words = tokenize(verse.text);
+      const verseWords = tokenize(verse.text);
+      const refWords = tokenize(`(${verse.reference})`);
+      const words = [...verseWords, ...refWords];
+      const refKeywords = refWords.map((w) => w.replace(/[^a-zA-Z0-9']/g, ""));
+      const allKeywords = [...verse.keywords, ...refKeywords];
       const blankedSet = pickBlankedIndices(
         words,
-        verse.keywords,
+        allKeywords,
         round,
         totalRounds
       );
