@@ -10,30 +10,22 @@ import { Progress } from "@/components/ui/progress";
 function ReadingPhase({
   verseText,
   reference,
-  timeLeft,
-  onSkip,
+  onReady,
 }: {
   verseText: string;
   reference: string;
-  timeLeft: number;
-  onSkip: () => void;
+  onReady: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Read and memorize</p>
-        <div className="flex items-center gap-3">
-          <span className="tabular-nums text-sm font-medium">{timeLeft}s</span>
-          <Progress value={(timeLeft / 15) * 100} className="w-24" />
-        </div>
-      </div>
+    <div className="flex flex-col gap-8">
+      <p className="text-base text-muted-foreground">Read and memorize</p>
 
-      <p className="text-lg leading-8 font-serif">{verseText}</p>
+      <p className="text-xl leading-9 font-serif">{verseText}</p>
 
       <div className="flex items-center justify-between">
         <Badge variant="outline">{reference}</Badge>
-        <Button variant="ghost" size="sm" onClick={onSkip}>
-          Skip
+        <Button size="sm" onClick={onReady}>
+          I&apos;m ready
         </Button>
       </div>
     </div>
@@ -55,15 +47,17 @@ function BlankInput({
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   inputRef: (el: HTMLInputElement | null) => void;
 }) {
-  const charWidth = Math.max(slot.word.replace(/[^a-zA-Z0-9']/g, "").length, 3);
+  const strippedWord = slot.word.replace(/[^a-zA-Z0-9']/g, "");
+  const charCount = strippedWord.length;
+  const widthCh = Math.max(charCount, 2) + 1;
 
-  let borderClass = "border-b-2 border-muted-foreground/30";
+  let borderClass = "border-b-[3px] border-muted-foreground/25";
   if (slot.status === "correct") {
-    borderClass = "border-b-2 border-green-500";
+    borderClass = "border-b-[3px] border-green-500";
   } else if (slot.status === "incorrect") {
-    borderClass = "border-b-2 border-red-500";
+    borderClass = "border-b-[3px] border-red-500";
   } else if (isActive) {
-    borderClass = "border-b-2 border-foreground";
+    borderClass = "border-b-[3px] border-foreground";
   }
 
   const leadingPunct = slot.word.match(/^([^a-zA-Z0-9']*)/)?.[1] || "";
@@ -72,15 +66,15 @@ function BlankInput({
   return (
     <span className="inline-flex items-baseline">
       {leadingPunct && (
-        <span className="text-lg font-serif">{leadingPunct}</span>
+        <span className="text-xl font-serif">{leadingPunct}</span>
       )}
       <span className={`inline-flex items-baseline ${borderClass} mx-0.5`}>
         {slot.status === "correct" ? (
           <span
-            className="text-lg font-serif text-green-600 dark:text-green-400 px-0.5"
-            style={{ minWidth: `${charWidth}ch` }}
+            className="text-xl font-serif text-green-600 dark:text-green-400 px-1"
+            style={{ minWidth: `${widthCh}ch` }}
           >
-            {slot.word.replace(/^[^a-zA-Z0-9']*|[^a-zA-Z0-9']*$/g, "")}
+            {strippedWord}
           </span>
         ) : (
           <input
@@ -90,12 +84,12 @@ function BlankInput({
             onChange={(e) => onChange(e.target.value)}
             onFocus={onFocus}
             onKeyDown={onKeyDown}
-            className={`bg-transparent outline-none text-lg font-serif px-0.5 ${
+            className={`bg-transparent outline-none text-xl font-serif px-1 ${
               slot.status === "incorrect"
                 ? "text-red-600 dark:text-red-400"
                 : "text-foreground"
             }`}
-            style={{ width: `${charWidth}ch` }}
+            style={{ width: `${widthCh}ch` }}
             disabled={false}
             autoComplete="off"
             autoCapitalize="off"
@@ -104,7 +98,7 @@ function BlankInput({
         )}
       </span>
       {trailingPunct && (
-        <span className="text-lg font-serif">{trailingPunct}</span>
+        <span className="text-xl font-serif">{trailingPunct}</span>
       )}
     </span>
   );
@@ -118,6 +112,8 @@ function FillInPhase({
   round,
   totalRounds,
   reference,
+  showVerseHint,
+  verseText,
   onUpdateInput,
   onSetActive,
   onMoveNext,
@@ -133,6 +129,8 @@ function FillInPhase({
   round: number;
   totalRounds: number;
   reference: string;
+  showVerseHint: boolean;
+  verseText: string;
   onUpdateInput: (index: number, value: string) => void;
   onSetActive: (index: number) => void;
   onMoveNext: () => void;
@@ -203,7 +201,15 @@ function FillInPhase({
         <Badge variant="secondary">{blankPercent}% blanked</Badge>
       </div>
 
-      <div className="leading-10 flex flex-wrap items-baseline gap-y-2">
+      {showVerseHint && (
+        <div className="rounded-lg bg-muted/50 px-4 py-3">
+          <p className="text-base leading-7 font-serif text-muted-foreground italic">
+            {verseText}
+          </p>
+        </div>
+      )}
+
+      <div className="leading-[3rem] flex flex-wrap items-baseline gap-y-2">
         {slots.map((slot) =>
           slot.blanked ? (
             <BlankInput
@@ -216,7 +222,7 @@ function FillInPhase({
               inputRef={setInputRef(slot.index)}
             />
           ) : (
-            <span key={slot.index} className="text-lg font-serif mx-0.5">
+            <span key={slot.index} className="text-xl font-serif mx-0.5">
               {slot.word}
             </span>
           )
@@ -278,13 +284,14 @@ export function VerseGame() {
   const {
     currentVerse,
     phase,
-    readingTimeLeft,
+    showVerseHint,
     fillRound,
     gameComplete,
     completedCount,
     totalVerses,
     startGame,
-    skipReading,
+    beginFill,
+    toggleVerseHint,
     updateBlankInput,
     setActiveBlank,
     moveToNextBlank,
@@ -316,15 +323,27 @@ export function VerseGame() {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-4 w-full">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Verse {completedCount + 1} of {totalVerses}
         </p>
-        <Progress
-          value={(completedCount / totalVerses) * 100}
-          className="w-32"
-        />
+
+        <div className="flex items-center gap-3">
+          {phase === "fill" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleVerseHint}
+            >
+              {showVerseHint ? "Hide verse" : "Show verse"}
+            </Button>
+          )}
+          <Progress
+            value={(completedCount / totalVerses) * 100}
+            className="w-32"
+          />
+        </div>
       </div>
 
       <Card>
@@ -333,8 +352,7 @@ export function VerseGame() {
             <ReadingPhase
               verseText={currentVerse.text}
               reference={currentVerse.reference}
-              timeLeft={readingTimeLeft}
-              onSkip={skipReading}
+              onReady={beginFill}
             />
           )}
 
@@ -347,6 +365,8 @@ export function VerseGame() {
               round={fillRound.round}
               totalRounds={fillRound.totalRounds}
               reference={currentVerse.reference}
+              showVerseHint={showVerseHint}
+              verseText={currentVerse.text}
               onUpdateInput={updateBlankInput}
               onSetActive={setActiveBlank}
               onMoveNext={moveToNextBlank}
