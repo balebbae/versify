@@ -20,10 +20,11 @@ function ReadingPhase({
     <div className="flex flex-col gap-8">
       <p className="text-base text-muted-foreground">Read and memorize</p>
 
-      <p className="text-2xl leading-10 font-serif">{verseText}</p>
+      <p className="text-2xl leading-10 font-serif">
+        {verseText} ({reference})
+      </p>
 
-      <div className="flex items-center justify-between">
-        <Badge variant="outline">{reference}</Badge>
+      <div className="flex items-center justify-end">
         <Button size="sm" onClick={onReady}>
           I&apos;m ready
         </Button>
@@ -204,7 +205,7 @@ function FillInPhase({
       {showVerseHint && (
         <div className="rounded-lg bg-muted/50 px-4 py-3">
           <p className="text-lg leading-8 font-serif text-muted-foreground italic">
-            {verseText}
+            {verseText} ({reference})
           </p>
         </div>
       )}
@@ -229,9 +230,7 @@ function FillInPhase({
         )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <Badge variant="outline">{reference}</Badge>
-
+      <div className="flex items-center justify-end">
         <div className="flex gap-2">
           {submitted && allCorrect ? (
             <Button size="sm" onClick={onAdvance}>
