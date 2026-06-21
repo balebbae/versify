@@ -20,7 +20,7 @@ function ReadingPhase({
     <div className="flex flex-col gap-8">
       <p className="text-base text-muted-foreground">Read and memorize</p>
 
-      <p className="text-xl leading-9 font-serif">{verseText}</p>
+      <p className="text-2xl leading-10 font-serif">{verseText}</p>
 
       <div className="flex items-center justify-between">
         <Badge variant="outline">{reference}</Badge>
@@ -66,12 +66,12 @@ function BlankInput({
   return (
     <span className="inline-flex items-baseline">
       {leadingPunct && (
-        <span className="text-xl font-serif">{leadingPunct}</span>
+        <span className="text-2xl font-serif">{leadingPunct}</span>
       )}
       <span className={`inline-flex items-baseline ${borderClass} mx-0.5`}>
         {slot.status === "correct" ? (
           <span
-            className="text-xl font-serif text-green-600 dark:text-green-400 px-1"
+            className="text-2xl font-serif text-green-600 dark:text-green-400 px-1"
             style={{ minWidth: `${widthCh}ch` }}
           >
             {strippedWord}
@@ -84,7 +84,7 @@ function BlankInput({
             onChange={(e) => onChange(e.target.value)}
             onFocus={onFocus}
             onKeyDown={onKeyDown}
-            className={`bg-transparent outline-none text-xl font-serif px-1 ${
+            className={`bg-transparent outline-none text-2xl font-serif px-1 ${
               slot.status === "incorrect"
                 ? "text-red-600 dark:text-red-400"
                 : "text-foreground"
@@ -98,7 +98,7 @@ function BlankInput({
         )}
       </span>
       {trailingPunct && (
-        <span className="text-xl font-serif">{trailingPunct}</span>
+        <span className="text-2xl font-serif">{trailingPunct}</span>
       )}
     </span>
   );
@@ -203,13 +203,13 @@ function FillInPhase({
 
       {showVerseHint && (
         <div className="rounded-lg bg-muted/50 px-4 py-3">
-          <p className="text-base leading-7 font-serif text-muted-foreground italic">
+          <p className="text-lg leading-8 font-serif text-muted-foreground italic">
             {verseText}
           </p>
         </div>
       )}
 
-      <div className="leading-[3rem] flex flex-wrap items-baseline gap-y-2">
+      <div className="leading-[3.5rem] flex flex-wrap items-baseline gap-y-3">
         {slots.map((slot) =>
           slot.blanked ? (
             <BlankInput
@@ -222,7 +222,7 @@ function FillInPhase({
               inputRef={setInputRef(slot.index)}
             />
           ) : (
-            <span key={slot.index} className="text-xl font-serif mx-0.5">
+            <span key={slot.index} className="text-2xl font-serif mx-0.5">
               {slot.word}
             </span>
           )
