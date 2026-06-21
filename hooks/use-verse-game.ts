@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { verses, type Verse } from "@/lib/verses";
 
 export type GamePhase = "reading" | "fill";
@@ -86,11 +86,10 @@ export function useVerseGame() {
   );
   const [currentVerse, setCurrentVerse] = useState<Verse | null>(null);
   const [phase, setPhase] = useState<GamePhase>("reading");
-  const [readingTimeLeft, setReadingTimeLeft] = useState(15);
+  const [showVerseHint, setShowVerseHint] = useState(false);
   const [fillRound, setFillRound] = useState<FillRoundState | null>(null);
   const [gameComplete, setGameComplete] = useState(false);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const orderRef = useRef<number[]>([]);
 
   const totalRounds = 4;
@@ -141,24 +140,9 @@ export function useVerseGame() {
     (verse: Verse) => {
       setCurrentVerse(verse);
       setPhase("reading");
-      setReadingTimeLeft(15);
-
-      if (timerRef.current) clearInterval(timerRef.current);
-
-      timerRef.current = setInterval(() => {
-        setReadingTimeLeft((prev) => {
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            timerRef.current = null;
-            setPhase("fill");
-            setFillRound(buildFillRound(verse, 1));
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      setShowVerseHint(false);
     },
-    [buildFillRound]
+    []
   );
 
   const startGame = useCallback(() => {
@@ -169,15 +153,17 @@ export function useVerseGame() {
     startReading(verse);
   }, [startReading]);
 
-  const skipReading = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
-    setReadingTimeLeft(0);
+  const beginFill = useCallback(() => {
     if (currentVerse) {
       setPhase("fill");
+      setShowVerseHint(false);
       setFillRound(buildFillRound(currentVerse, 1));
     }
   }, [currentVerse, buildFillRound]);
+
+  const toggleVerseHint = useCallback(() => {
+    setShowVerseHint((prev) => !prev);
+  }, []);
 
   const updateBlankInput = useCallback(
     (slotIndex: number, value: string) => {
@@ -327,22 +313,19 @@ export function useVerseGame() {
     startReading,
   ]);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+
 
   return {
     currentVerse,
     phase,
-    readingTimeLeft,
+    showVerseHint,
     fillRound,
     gameComplete,
     completedCount: completedVerseIds.size,
     totalVerses: verses.length,
     startGame,
-    skipReading,
+    beginFill,
+    toggleVerseHint,
     updateBlankInput,
     setActiveBlank,
     moveToNextBlank,
