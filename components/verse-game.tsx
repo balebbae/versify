@@ -303,6 +303,7 @@ export function VerseGame() {
     gameComplete,
     totalVerses,
     startGame,
+    goHome,
     beginFill,
     toggleVerseHint,
     updateBlankInput,
@@ -359,10 +360,13 @@ export function VerseGame() {
               {showVerseHint ? "Hide verse" : "Show verse"}
             </Button>
           )}
-          <Button variant="ghost" size="icon" aria-label="Home" asChild>
-            <Link href="/">
-              <Home />
-            </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Home"
+            onClick={goHome}
+          >
+            <Home />
           </Button>
           <ProgressDialog />
         </div>
