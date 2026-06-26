@@ -33,13 +33,37 @@ function buildBlankSchedule(totalWords: number): number[] {
   return Array.from(new Set(targets)).sort((a, b) => a - b);
 }
 
-// Returns the indices to blank for a given target count, prioritizing
-// keywords (in verse order) first, then remaining words in order so that
-// each round is a superset of the previous one.
+// Deterministic PRNG so the random blank order stays stable across a verse's
+// rounds (otherwise later rounds wouldn't be supersets of earlier ones).
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle<T>(array: T[], rand: () => number): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Returns the indices to blank for a given target count. Keywords are
+// prioritized, then the remaining words, but within each group the order is
+// randomized (seeded per-verse) so blanks appear at random positions while
+// each round remains a superset of the previous one.
 function pickBlankedIndices(
   words: string[],
   keywords: string[],
-  targetCount: number
+  targetCount: number,
+  seed: number
 ): Set<number> {
   const keywordLower = keywords.map((k) => k.toLowerCase());
 
@@ -59,7 +83,11 @@ function pickBlankedIndices(
     }
   });
 
-  const ordered = [...keywordIndices, ...nonKeywordIndices];
+  const rand = mulberry32(seed);
+  const ordered = [
+    ...seededShuffle(keywordIndices, rand),
+    ...seededShuffle(nonKeywordIndices, rand),
+  ];
   return new Set(ordered.slice(0, targetCount));
 }
 
@@ -108,7 +136,12 @@ export function useVerseGame() {
       const schedule = buildBlankSchedule(words.length);
       const totalRounds = schedule.length;
       const targetCount = schedule[Math.min(round, totalRounds) - 1];
-      const blankedSet = pickBlankedIndices(words, allKeywords, targetCount);
+      const blankedSet = pickBlankedIndices(
+        words,
+        allKeywords,
+        targetCount,
+        verse.id
+      );
 
       const slots: WordSlot[] = words.map((word, i) => ({
         index: i,
