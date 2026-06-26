@@ -24,18 +24,27 @@ function tokenize(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
 }
 
+// Gradual, capped schedule of how many words are blanked each round.
+// Starts small and grows slowly; the final round always blanks the whole verse.
+function buildBlankSchedule(totalWords: number): number[] {
+  const base = [3, 5, 8, 12, 18];
+  const targets = base.filter((n) => n < totalWords);
+  targets.push(totalWords);
+  return Array.from(new Set(targets)).sort((a, b) => a - b);
+}
+
+// Returns the indices to blank for a given target count, prioritizing
+// keywords (in verse order) first, then remaining words in order so that
+// each round is a superset of the previous one.
 function pickBlankedIndices(
   words: string[],
   keywords: string[],
-  round: number,
-  totalRounds: number
+  targetCount: number
 ): Set<number> {
-  const blanked = new Set<number>();
   const keywordLower = keywords.map((k) => k.toLowerCase());
 
-  if (round === totalRounds) {
-    words.forEach((_, i) => blanked.add(i));
-    return blanked;
+  if (targetCount >= words.length) {
+    return new Set(words.map((_, i) => i));
   }
 
   const keywordIndices: number[] = [];
@@ -50,21 +59,8 @@ function pickBlankedIndices(
     }
   });
 
-  if (round === 1) {
-    keywordIndices.forEach((i) => blanked.add(i));
-  } else if (round === 2) {
-    keywordIndices.forEach((i) => blanked.add(i));
-    const extra = Math.ceil(nonKeywordIndices.length * 0.5);
-    const shuffled = [...nonKeywordIndices].sort(() => Math.random() - 0.5);
-    shuffled.slice(0, extra).forEach((i) => blanked.add(i));
-  } else if (round === 3) {
-    keywordIndices.forEach((i) => blanked.add(i));
-    const extra = Math.ceil(nonKeywordIndices.length * 0.85);
-    const shuffled = [...nonKeywordIndices].sort(() => Math.random() - 0.5);
-    shuffled.slice(0, extra).forEach((i) => blanked.add(i));
-  }
-
-  return blanked;
+  const ordered = [...keywordIndices, ...nonKeywordIndices];
+  return new Set(ordered.slice(0, targetCount));
 }
 
 function normalize(s: string): string {
@@ -92,8 +88,6 @@ export function useVerseGame() {
 
   const orderRef = useRef<number[]>([]);
 
-  const totalRounds = 4;
-
   const pickNextVerse = useCallback((): Verse | null => {
     if (orderRef.current.length === 0) {
       const remaining = verses.filter((v) => !completedVerseIds.has(v.id));
@@ -111,12 +105,10 @@ export function useVerseGame() {
       const words = [...verseWords, ...refWords];
       const refKeywords = refWords.map((w) => w.replace(/[^a-zA-Z0-9']/g, ""));
       const allKeywords = [...verse.keywords, ...refKeywords];
-      const blankedSet = pickBlankedIndices(
-        words,
-        allKeywords,
-        round,
-        totalRounds
-      );
+      const schedule = buildBlankSchedule(words.length);
+      const totalRounds = schedule.length;
+      const targetCount = schedule[Math.min(round, totalRounds) - 1];
+      const blankedSet = pickBlankedIndices(words, allKeywords, targetCount);
 
       const slots: WordSlot[] = words.map((word, i) => ({
         index: i,
@@ -283,7 +275,7 @@ export function useVerseGame() {
 
   const advanceRound = useCallback(() => {
     if (!currentVerse || !fillRound) return;
-    if (fillRound.round < totalRounds) {
+    if (fillRound.round < fillRound.totalRounds) {
       setFillRound(buildFillRound(currentVerse, fillRound.round + 1));
     } else {
       setCompletedVerseIds((prev) => {
