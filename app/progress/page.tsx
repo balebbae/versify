@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { RotateCcw } from "lucide-react";
 import { verses } from "@/lib/verses";
+import { clearProgress } from "@/lib/progress";
 import {
   VerseProgressList,
   useProgress,
@@ -24,9 +26,19 @@ export default function ProgressPage() {
               {memorized} of {verses.length} verses memorized
             </p>
           </div>
-          <Button asChild>
-            <Link href="/">Back to game</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={clearProgress}
+              aria-label="Reset progress"
+            >
+              <RotateCcw />
+            </Button>
+            <Button asChild>
+              <Link href="/">Back to game</Link>
+            </Button>
+          </div>
         </div>
 
         <Card>

@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useVerseGame, type WordSlot } from "@/hooks/use-verse-game";
 import { verses } from "@/lib/verses";
 import { Card, CardContent } from "@/components/ui/card";
@@ -311,7 +311,6 @@ export function VerseGame() {
     advanceRound,
     goToNextVerse,
     goToPrevVerse,
-    restartGame,
     canGoPrev,
     canGoNext,
   } = useVerseGame();
@@ -403,14 +402,6 @@ export function VerseGame() {
           aria-label="Previous verse"
         >
           <ChevronLeft />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={restartGame}
-          aria-label="Restart game"
-        >
-          <RotateCcw />
         </Button>
         <Button
           variant="outline"

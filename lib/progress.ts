@@ -37,6 +37,18 @@ export function recordVerseProgress(
   }
 }
 
+const PROGRESS_EVENT = "versify-progress-change";
+
+export function clearProgress(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore write failures (e.g. storage disabled)
+  }
+  window.dispatchEvent(new Event(PROGRESS_EVENT));
+}
+
 export function progressPercent(p: VerseProgress | undefined): number {
   if (!p || p.totalRounds === 0) return 0;
   return Math.round((p.roundsCompleted / p.totalRounds) * 100);
@@ -53,7 +65,11 @@ let cachedMap: ProgressMap = EMPTY;
 export function subscribeProgress(callback: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+  window.addEventListener(PROGRESS_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(PROGRESS_EVENT, callback);
+  };
 }
 
 export function getProgressSnapshot(): ProgressMap {
