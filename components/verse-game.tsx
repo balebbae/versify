@@ -2,10 +2,22 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { useVerseGame, type WordSlot } from "@/hooks/use-verse-game";
+import { verses } from "@/lib/verses";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  VerseProgressList,
+  useProgress,
+  memorizedCount,
+} from "@/components/verse-progress-list";
 
 function ReadingPhase({
   verseText,
@@ -298,6 +310,10 @@ export function VerseGame() {
     retryIncorrect,
     advanceRound,
     goToNextVerse,
+    goToPrevVerse,
+    restartGame,
+    canGoPrev,
+    canGoNext,
   } = useVerseGame();
 
   if (!currentVerse && !gameComplete) {
@@ -313,9 +329,7 @@ export function VerseGame() {
         <Button size="lg" onClick={startGame}>
           Start
         </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/progress">View progress</Link>
-        </Button>
+        <StartProgressPopover />
       </div>
     );
   }
@@ -341,9 +355,6 @@ export function VerseGame() {
               {showVerseHint ? "Hide verse" : "Show verse"}
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={goToNextVerse}>
-            Go next
-          </Button>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/progress">Progress</Link>
           </Button>
@@ -382,6 +393,59 @@ export function VerseGame() {
           )}
         </CardContent>
       </Card>
+
+      <div className="flex items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={goToPrevVerse}
+          disabled={!canGoPrev}
+          aria-label="Previous verse"
+        >
+          <ChevronLeft />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={restartGame}
+          aria-label="Restart game"
+        >
+          <RotateCcw />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={goToNextVerse}
+          disabled={!canGoNext}
+          aria-label="Next verse"
+        >
+          <ChevronRight />
+        </Button>
+      </div>
     </div>
+  );
+}
+
+function StartProgressPopover() {
+  const progress = useProgress();
+  const memorized = memorizedCount(progress);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm">
+          View progress
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="center">
+        <div className="mb-3 flex flex-col gap-0.5">
+          <p className="text-sm font-semibold">Progress</p>
+          <p className="text-xs text-muted-foreground">
+            {memorized} of {verses.length} verses memorized
+          </p>
+        </div>
+        <VerseProgressList compact />
+      </PopoverContent>
+    </Popover>
   );
 }

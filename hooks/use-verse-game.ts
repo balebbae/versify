@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { verses, type Verse } from "@/lib/verses";
 import { recordVerseProgress } from "@/lib/progress";
 
@@ -121,6 +121,9 @@ function normalize(s: string): string {
   return s.replace(/[^a-zA-Z0-9']/g, "").toLowerCase();
 }
 
+// Verses always play in fixed (id) order.
+const orderedVerses = [...verses].sort((a, b) => a.id - b.id);
+
 export function useVerseGame() {
   const [completedVerseIds, setCompletedVerseIds] = useState<Set<number>>(
     () => new Set()
@@ -130,18 +133,6 @@ export function useVerseGame() {
   const [showVerseHint, setShowVerseHint] = useState(false);
   const [fillRound, setFillRound] = useState<FillRoundState | null>(null);
   const [gameComplete, setGameComplete] = useState(false);
-
-  const orderRef = useRef<number[]>([]);
-
-  const pickNextVerse = useCallback((): Verse | null => {
-    if (orderRef.current.length === 0) {
-      const remaining = verses.filter((v) => !completedVerseIds.has(v.id));
-      if (remaining.length === 0) return null;
-      orderRef.current = remaining.map((v) => v.id).sort((a, b) => a - b);
-    }
-    const nextId = orderRef.current.shift()!;
-    return verses.find((v) => v.id === nextId) ?? null;
-  }, [completedVerseIds]);
 
   const buildFillRound = useCallback(
     (verse: Verse, round: number): FillRoundState => {
@@ -197,9 +188,7 @@ export function useVerseGame() {
   const startGame = useCallback(() => {
     setCompletedVerseIds(new Set());
     setGameComplete(false);
-    orderRef.current = verses.map((v) => v.id).sort((a, b) => a - b);
-    const verse = verses.find((v) => v.id === orderRef.current.shift()!)!;
-    startReading(verse);
+    startReading(orderedVerses[0]);
   }, [startReading]);
 
   const beginFill = useCallback(() => {
@@ -342,49 +331,51 @@ export function useVerseGame() {
         return next;
       });
 
-      const remaining = verses.filter(
-        (v) => !completedVerseIds.has(v.id) && v.id !== currentVerse.id
-      );
-      if (remaining.length === 0) {
+      const idx = orderedVerses.findIndex((v) => v.id === currentVerse.id);
+      const next = orderedVerses[idx + 1];
+      if (next) {
+        startReading(next);
+      } else {
         setGameComplete(true);
         setCurrentVerse(null);
         setFillRound(null);
-      } else {
-        const next = pickNextVerse();
-        if (next) {
-          startReading(next);
-        } else {
-          setGameComplete(true);
-        }
       }
     }
-  }, [
-    currentVerse,
-    fillRound,
-    buildFillRound,
-    completedVerseIds,
-    pickNextVerse,
-    startReading,
-  ]);
+  }, [currentVerse, fillRound, buildFillRound, startReading]);
 
-  const goToNextVerse = useCallback(() => {
-    if (!currentVerse) return;
-    if (fillRound) {
-      recordVerseProgress(
-        currentVerse.id,
-        fillRound.round - 1,
-        fillRound.totalRounds
-      );
-    }
-    const next = pickNextVerse();
-    if (next) {
-      startReading(next);
-    } else {
-      setGameComplete(true);
-      setCurrentVerse(null);
-      setFillRound(null);
-    }
-  }, [currentVerse, fillRound, pickNextVerse, startReading]);
+  // Jump to the verse at the given offset (-1 prev, +1 next) in fixed order,
+  // recording partial progress for the current verse first.
+  const navigateRelative = useCallback(
+    (offset: number) => {
+      if (!currentVerse) return;
+      if (fillRound) {
+        recordVerseProgress(
+          currentVerse.id,
+          fillRound.round - 1,
+          fillRound.totalRounds
+        );
+      }
+      const idx = orderedVerses.findIndex((v) => v.id === currentVerse.id);
+      const target = orderedVerses[idx + offset];
+      if (target) startReading(target);
+    },
+    [currentVerse, fillRound, startReading]
+  );
+
+  const goToNextVerse = useCallback(
+    () => navigateRelative(1),
+    [navigateRelative]
+  );
+  const goToPrevVerse = useCallback(
+    () => navigateRelative(-1),
+    [navigateRelative]
+  );
+
+  const currentIndex = currentVerse
+    ? orderedVerses.findIndex((v) => v.id === currentVerse.id)
+    : -1;
+  const canGoPrev = currentIndex > 0;
+  const canGoNext = currentIndex >= 0 && currentIndex < orderedVerses.length - 1;
 
   return {
     currentVerse,
@@ -405,5 +396,9 @@ export function useVerseGame() {
     retryIncorrect,
     advanceRound,
     goToNextVerse,
+    goToPrevVerse,
+    restartGame: startGame,
+    canGoPrev,
+    canGoNext,
   };
 }
