@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { verses, type Verse } from "@/lib/verses";
+import { recordVerseProgress } from "@/lib/progress";
 
 export type GamePhase = "reading" | "fill";
 
@@ -22,6 +23,19 @@ export interface FillRoundState {
 
 function tokenize(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
+}
+
+// Tokenizes the reference and keeps the chapter:verse colon as its own token
+// so it can always be shown (never blanked). e.g. "Psalm 51:17" ->
+// ["(Psalm", "51", ":", "17)"]
+function tokenizeReference(reference: string): string[] {
+  return tokenize(`(${reference})`).flatMap((w) =>
+    w.split(/(:)/).filter(Boolean)
+  );
+}
+
+function hasAlphaNum(word: string): boolean {
+  return /[a-zA-Z0-9]/.test(word);
 }
 
 // Gradual, capped schedule of how many words are blanked each round.
@@ -67,14 +81,18 @@ function pickBlankedIndices(
 ): Set<number> {
   const keywordLower = keywords.map((k) => k.toLowerCase());
 
-  if (targetCount >= words.length) {
-    return new Set(words.map((_, i) => i));
+  const blankable = words
+    .map((w, i) => ({ w, i }))
+    .filter(({ w }) => hasAlphaNum(w));
+
+  if (targetCount >= blankable.length) {
+    return new Set(blankable.map(({ i }) => i));
   }
 
   const keywordIndices: number[] = [];
   const nonKeywordIndices: number[] = [];
 
-  words.forEach((w, i) => {
+  blankable.forEach(({ w, i }) => {
     const stripped = w.replace(/[^a-zA-Z0-9']/g, "").toLowerCase();
     if (keywordLower.includes(stripped)) {
       keywordIndices.push(i);
@@ -91,17 +109,16 @@ function pickBlankedIndices(
   return new Set(ordered.slice(0, targetCount));
 }
 
-function normalize(s: string): string {
-  return s.replace(/[^a-zA-Z0-9']/g, "").toLowerCase();
+// Total number of fill-in-the-blank rounds for a verse (same calculation the
+// game uses), so the progress page can show "rounds completed / total".
+export function getVerseTotalRounds(verse: Verse): number {
+  const words = [...tokenize(verse.text), ...tokenizeReference(verse.reference)];
+  const blankableCount = words.filter(hasAlphaNum).length;
+  return buildBlankSchedule(blankableCount).length;
 }
 
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
+function normalize(s: string): string {
+  return s.replace(/[^a-zA-Z0-9']/g, "").toLowerCase();
 }
 
 export function useVerseGame() {
@@ -120,7 +137,7 @@ export function useVerseGame() {
     if (orderRef.current.length === 0) {
       const remaining = verses.filter((v) => !completedVerseIds.has(v.id));
       if (remaining.length === 0) return null;
-      orderRef.current = shuffleArray(remaining.map((v) => v.id));
+      orderRef.current = remaining.map((v) => v.id).sort((a, b) => a - b);
     }
     const nextId = orderRef.current.shift()!;
     return verses.find((v) => v.id === nextId) ?? null;
@@ -129,11 +146,14 @@ export function useVerseGame() {
   const buildFillRound = useCallback(
     (verse: Verse, round: number): FillRoundState => {
       const verseWords = tokenize(verse.text);
-      const refWords = tokenize(`(${verse.reference})`);
+      const refWords = tokenizeReference(verse.reference);
       const words = [...verseWords, ...refWords];
-      const refKeywords = refWords.map((w) => w.replace(/[^a-zA-Z0-9']/g, ""));
+      const refKeywords = refWords
+        .map((w) => w.replace(/[^a-zA-Z0-9']/g, ""))
+        .filter(Boolean);
       const allKeywords = [...verse.keywords, ...refKeywords];
-      const schedule = buildBlankSchedule(words.length);
+      const blankableCount = words.filter(hasAlphaNum).length;
+      const schedule = buildBlankSchedule(blankableCount);
       const totalRounds = schedule.length;
       const targetCount = schedule[Math.min(round, totalRounds) - 1];
       const blankedSet = pickBlankedIndices(
@@ -146,7 +166,7 @@ export function useVerseGame() {
       const slots: WordSlot[] = words.map((word, i) => ({
         index: i,
         word,
-        blanked: blankedSet.has(i),
+        blanked: blankedSet.has(i) && hasAlphaNum(word),
         userInput: "",
         status: "pending" as const,
       }));
@@ -177,7 +197,7 @@ export function useVerseGame() {
   const startGame = useCallback(() => {
     setCompletedVerseIds(new Set());
     setGameComplete(false);
-    orderRef.current = shuffleArray(verses.map((v) => v.id));
+    orderRef.current = verses.map((v) => v.id).sort((a, b) => a - b);
     const verse = verses.find((v) => v.id === orderRef.current.shift()!)!;
     startReading(verse);
   }, [startReading]);
@@ -308,6 +328,11 @@ export function useVerseGame() {
 
   const advanceRound = useCallback(() => {
     if (!currentVerse || !fillRound) return;
+    recordVerseProgress(
+      currentVerse.id,
+      fillRound.round,
+      fillRound.totalRounds
+    );
     if (fillRound.round < fillRound.totalRounds) {
       setFillRound(buildFillRound(currentVerse, fillRound.round + 1));
     } else {
@@ -342,7 +367,24 @@ export function useVerseGame() {
     startReading,
   ]);
 
-
+  const goToNextVerse = useCallback(() => {
+    if (!currentVerse) return;
+    if (fillRound) {
+      recordVerseProgress(
+        currentVerse.id,
+        fillRound.round - 1,
+        fillRound.totalRounds
+      );
+    }
+    const next = pickNextVerse();
+    if (next) {
+      startReading(next);
+    } else {
+      setGameComplete(true);
+      setCurrentVerse(null);
+      setFillRound(null);
+    }
+  }, [currentVerse, fillRound, pickNextVerse, startReading]);
 
   return {
     currentVerse,
@@ -362,5 +404,6 @@ export function useVerseGame() {
     submitAnswers,
     retryIncorrect,
     advanceRound,
+    goToNextVerse,
   };
 }
