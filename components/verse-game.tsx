@@ -1,11 +1,23 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useVerseGame, type WordSlot } from "@/hooks/use-verse-game";
+import { verses } from "@/lib/verses";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  VerseProgressList,
+  useProgress,
+  memorizedCount,
+} from "@/components/verse-progress-list";
 
 function ReadingPhase({
   verseText,
@@ -20,7 +32,7 @@ function ReadingPhase({
     <div className="flex flex-col gap-8">
       <p className="text-base text-muted-foreground">Read and memorize</p>
 
-      <p className="text-2xl leading-10 font-serif">
+      <p className="text-2xl leading-10 font-sans">
         {verseText} ({reference})
       </p>
 
@@ -67,12 +79,12 @@ function BlankInput({
   return (
     <span className="inline-flex items-baseline">
       {leadingPunct && (
-        <span className="text-2xl font-serif">{leadingPunct}</span>
+        <span className="text-2xl font-sans">{leadingPunct}</span>
       )}
       <span className={`inline-flex items-baseline ${borderClass} mx-0.5`}>
         {slot.status === "correct" ? (
           <span
-            className="text-2xl font-serif text-green-600 dark:text-green-400 px-1"
+            className="text-2xl font-sans text-green-600 dark:text-green-400 px-1"
             style={{ minWidth: `${widthCh}ch` }}
           >
             {strippedWord}
@@ -85,7 +97,7 @@ function BlankInput({
             onChange={(e) => onChange(e.target.value)}
             onFocus={onFocus}
             onKeyDown={onKeyDown}
-            className={`bg-transparent outline-none text-2xl font-serif px-1 ${
+            className={`bg-transparent outline-none text-2xl font-sans px-1 ${
               slot.status === "incorrect"
                 ? "text-red-600 dark:text-red-400"
                 : "text-foreground"
@@ -99,7 +111,7 @@ function BlankInput({
         )}
       </span>
       {trailingPunct && (
-        <span className="text-2xl font-serif">{trailingPunct}</span>
+        <span className="text-2xl font-sans">{trailingPunct}</span>
       )}
     </span>
   );
@@ -204,7 +216,7 @@ function FillInPhase({
 
       {showVerseHint && (
         <div className="rounded-lg bg-muted/50 px-4 py-3">
-          <p className="text-lg leading-8 font-serif text-muted-foreground italic">
+          <p className="text-lg leading-8 font-sans text-muted-foreground italic">
             {verseText} ({reference})
           </p>
         </div>
@@ -223,7 +235,7 @@ function FillInPhase({
               inputRef={setInputRef(slot.index)}
             />
           ) : (
-            <span key={slot.index} className="text-2xl font-serif mx-0.5">
+            <span key={slot.index} className="text-2xl font-sans mx-0.5">
               {slot.word}
             </span>
           )
@@ -286,7 +298,6 @@ export function VerseGame() {
     showVerseHint,
     fillRound,
     gameComplete,
-    completedCount,
     totalVerses,
     startGame,
     beginFill,
@@ -298,6 +309,10 @@ export function VerseGame() {
     submitAnswers,
     retryIncorrect,
     advanceRound,
+    goToNextVerse,
+    goToPrevVerse,
+    canGoPrev,
+    canGoNext,
   } = useVerseGame();
 
   if (!currentVerse && !gameComplete) {
@@ -313,6 +328,7 @@ export function VerseGame() {
         <Button size="lg" onClick={startGame}>
           Start
         </Button>
+        <StartProgressPopover />
       </div>
     );
   }
@@ -325,10 +341,10 @@ export function VerseGame() {
     <div className="flex flex-col gap-4 w-full">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Verse {completedCount + 1} of {totalVerses}
+          Verse {currentVerse?.id ?? 1} of {totalVerses}
         </p>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {phase === "fill" && (
             <Button
               variant="ghost"
@@ -338,10 +354,9 @@ export function VerseGame() {
               {showVerseHint ? "Hide verse" : "Show verse"}
             </Button>
           )}
-          <Progress
-            value={(completedCount / totalVerses) * 100}
-            className="w-32"
-          />
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/progress">Progress</Link>
+          </Button>
         </div>
       </div>
 
@@ -377,6 +392,51 @@ export function VerseGame() {
           )}
         </CardContent>
       </Card>
+
+      <div className="flex items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={goToPrevVerse}
+          disabled={!canGoPrev}
+          aria-label="Previous verse"
+        >
+          <ChevronLeft />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={goToNextVerse}
+          disabled={!canGoNext}
+          aria-label="Next verse"
+        >
+          <ChevronRight />
+        </Button>
+      </div>
     </div>
+  );
+}
+
+function StartProgressPopover() {
+  const progress = useProgress();
+  const memorized = memorizedCount(progress);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm">
+          View progress
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="center">
+        <div className="mb-3 flex flex-col gap-0.5">
+          <p className="text-sm font-semibold">Progress</p>
+          <p className="text-xs text-muted-foreground">
+            {memorized} of {verses.length} verses memorized
+          </p>
+        </div>
+        <VerseProgressList compact />
+      </PopoverContent>
+    </Popover>
   );
 }
