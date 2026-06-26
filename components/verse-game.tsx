@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Home } from "lucide-react";
 import { useVerseGame, type WordSlot } from "@/hooks/use-verse-game";
 import { verses } from "@/lib/verses";
 import { Card, CardContent } from "@/components/ui/card";
@@ -359,6 +359,11 @@ export function VerseGame() {
               {showVerseHint ? "Hide verse" : "Show verse"}
             </Button>
           )}
+          <Button variant="ghost" size="icon" aria-label="Home" asChild>
+            <Link href="/">
+              <Home />
+            </Link>
+          </Button>
           <ProgressDialog />
         </div>
       </div>
