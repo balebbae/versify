@@ -9,10 +9,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   VerseProgressList,
   useProgress,
@@ -328,7 +331,9 @@ export function VerseGame() {
         <Button size="lg" onClick={startGame}>
           Start
         </Button>
-        <StartProgressPopover />
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/progress">View progress</Link>
+        </Button>
       </div>
     );
   }
@@ -354,9 +359,7 @@ export function VerseGame() {
               {showVerseHint ? "Hide verse" : "Show verse"}
             </Button>
           )}
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/progress">Progress</Link>
-          </Button>
+          <ProgressDialog />
         </div>
       </div>
 
@@ -417,26 +420,26 @@ export function VerseGame() {
   );
 }
 
-function StartProgressPopover() {
+function ProgressDialog() {
   const progress = useProgress();
   const memorized = memorizedCount(progress);
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Dialog>
+      <DialogTrigger asChild>
         <Button variant="ghost" size="sm">
-          View progress
+          Progress
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="center">
-        <div className="mb-3 flex flex-col gap-0.5">
-          <p className="text-sm font-semibold">Progress</p>
-          <p className="text-xs text-muted-foreground">
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Progress</DialogTitle>
+          <DialogDescription>
             {memorized} of {verses.length} verses memorized
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
         <VerseProgressList compact />
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }
