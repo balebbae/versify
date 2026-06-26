@@ -191,6 +191,14 @@ export function useVerseGame() {
     startReading(orderedVerses[0]);
   }, [startReading]);
 
+  const goHome = useCallback(() => {
+    setGameComplete(false);
+    setCurrentVerse(null);
+    setFillRound(null);
+    setPhase("reading");
+    setShowVerseHint(false);
+  }, []);
+
   const beginFill = useCallback(() => {
     if (currentVerse) {
       setPhase("fill");
@@ -386,6 +394,7 @@ export function useVerseGame() {
     completedCount: completedVerseIds.size,
     totalVerses: verses.length,
     startGame,
+    goHome,
     beginFill,
     toggleVerseHint,
     updateBlankInput,
