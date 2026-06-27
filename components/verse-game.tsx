@@ -332,9 +332,14 @@ export function VerseGame() {
         <Button size="lg" onClick={startGame}>
           Start
         </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/progress">View progress</Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/progress">View progress</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/beliefs">Study guide</Link>
+          </Button>
+        </div>
       </div>
     );
   }
