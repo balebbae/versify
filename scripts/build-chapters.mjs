@@ -6,6 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const raw = fs.readFileSync(path.join(__dirname, "chapters-raw.txt"), "utf8");
 
 const SLUGS = {
+  "Philippians 1": "philippians-1",
   "Philippians 2": "philippians-2",
   "Philippians 3": "philippians-3",
   "Philippians 4": "philippians-4",
