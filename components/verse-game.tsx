@@ -339,6 +339,9 @@ export function VerseGame() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/beliefs">Study guide</Link>
           </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/chapters">Chapters</Link>
+          </Button>
         </div>
       </div>
     );
