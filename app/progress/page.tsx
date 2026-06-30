@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import { verses } from "@/lib/verses";
 import { clearProgress } from "@/lib/progress";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 export default function ProgressPage() {
   const progress = useProgress();
   const memorized = memorizedCount(progress);
+  const router = useRouter();
 
   return (
     <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
@@ -43,7 +45,9 @@ export default function ProgressPage() {
 
         <Card>
           <CardContent>
-            <VerseProgressList />
+            <VerseProgressList
+              onSelect={(id) => router.push(`/?verse=${id}`)}
+            />
           </CardContent>
         </Card>
       </main>
