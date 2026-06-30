@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Home } from "lucide-react";
 import { useVerseGame, type WordSlot } from "@/hooks/use-verse-game";
@@ -156,6 +156,7 @@ function FillInPhase({
   onAdvance: () => void;
 }) {
   const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const setInputRef = useCallback(
     (index: number) => (el: HTMLInputElement | null) => {
@@ -174,6 +175,25 @@ function FillInPhase({
       el.focus();
     }
   }, [activeBlankIndex, round]);
+
+  // When every blank is correct the inputs become static text, so there is no
+  // focused field to receive Enter. Focus the container (which handles Enter
+  // via onKeyDown) so Enter still advances to the next round/verse.
+  useEffect(() => {
+    if (submitted && allCorrect) {
+      containerRef.current?.focus();
+    }
+  }, [submitted, allCorrect]);
+
+  const handleContainerKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (submitted && allCorrect && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        onAdvance();
+      }
+    },
+    [submitted, allCorrect, onAdvance]
+  );
 
   const handleKeyDown = useCallback(
     (slotIndex: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -211,7 +231,12 @@ function FillInPhase({
   const blankPercent = Math.round((blankedCount / totalWords) * 100);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div
+      ref={containerRef}
+      tabIndex={-1}
+      onKeyDown={handleContainerKeyDown}
+      className="flex flex-col gap-6 outline-none"
+    >
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{roundLabel}</p>
         <Badge variant="secondary">{blankPercent}% blanked</Badge>
@@ -315,9 +340,24 @@ export function VerseGame() {
     advanceRound,
     goToNextVerse,
     goToPrevVerse,
+    jumpToVerse,
     canGoPrev,
     canGoNext,
   } = useVerseGame();
+
+  // Deep-link support: /?verse=<id> (e.g. from the progress page) jumps
+  // straight to that verse, then cleans the URL.
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("verse");
+    if (param) {
+      const id = parseInt(param, 10);
+      if (!Number.isNaN(id)) {
+        jumpToVerse(id);
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!currentVerse && !gameComplete) {
     return (
@@ -376,7 +416,7 @@ export function VerseGame() {
           >
             <Home />
           </Button>
-          <ProgressDialog />
+          <ProgressDialog onSelect={jumpToVerse} />
         </div>
       </div>
 
@@ -437,12 +477,13 @@ export function VerseGame() {
   );
 }
 
-function ProgressDialog() {
+function ProgressDialog({ onSelect }: { onSelect: (verseId: number) => void }) {
   const progress = useProgress();
   const memorized = memorizedCount(progress);
+  const [open, setOpen] = useState(false);
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm">
           Progress
@@ -452,10 +493,17 @@ function ProgressDialog() {
         <DialogHeader>
           <DialogTitle>Progress</DialogTitle>
           <DialogDescription>
-            {memorized} of {verses.length} verses memorized
+            {memorized} of {verses.length} verses memorized. Tap a verse to jump
+            to it.
           </DialogDescription>
         </DialogHeader>
-        <VerseProgressList compact />
+        <VerseProgressList
+          compact
+          onSelect={(id) => {
+            onSelect(id);
+            setOpen(false);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

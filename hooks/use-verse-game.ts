@@ -370,6 +370,26 @@ export function useVerseGame() {
     [currentVerse, fillRound, startReading]
   );
 
+  // Jump directly to a specific verse by id, recording partial progress for
+  // the current verse first (if mid-fill).
+  const jumpToVerse = useCallback(
+    (verseId: number) => {
+      if (currentVerse && fillRound) {
+        recordVerseProgress(
+          currentVerse.id,
+          fillRound.round - 1,
+          fillRound.totalRounds
+        );
+      }
+      const target = orderedVerses.find((v) => v.id === verseId);
+      if (target) {
+        setGameComplete(false);
+        startReading(target);
+      }
+    },
+    [currentVerse, fillRound, startReading]
+  );
+
   const goToNextVerse = useCallback(
     () => navigateRelative(1),
     [navigateRelative]
@@ -406,6 +426,7 @@ export function useVerseGame() {
     advanceRound,
     goToNextVerse,
     goToPrevVerse,
+    jumpToVerse,
     restartGame: startGame,
     canGoPrev,
     canGoNext,
