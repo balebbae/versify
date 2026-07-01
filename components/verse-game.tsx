@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Home } from "lucide-react";
+import { ChevronLeft, ChevronRight, Home, Shuffle } from "lucide-react";
 import { useVerseGame, type WordSlot } from "@/hooks/use-verse-game";
 import { verses } from "@/lib/verses";
 import { Card, CardContent } from "@/components/ui/card";
@@ -341,6 +341,8 @@ export function VerseGame() {
     goToNextVerse,
     goToPrevVerse,
     jumpToVerse,
+    shuffle,
+    toggleShuffle,
     canGoPrev,
     canGoNext,
   } = useVerseGame();
@@ -415,6 +417,18 @@ export function VerseGame() {
             onClick={goHome}
           >
             <Home />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Shuffle"
+            aria-pressed={shuffle}
+            onClick={toggleShuffle}
+            className={
+              shuffle ? "text-foreground" : "text-muted-foreground/50"
+            }
+          >
+            <Shuffle />
           </Button>
           <ProgressDialog onSelect={jumpToVerse} />
         </div>
