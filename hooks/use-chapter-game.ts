@@ -19,12 +19,14 @@ function tokenize(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
 }
 
+// Letters/digits only, so the user never has to type punctuation (apostrophes,
+// hyphens, etc.) that appears in the verse.
 function stripWord(word: string): string {
-  return word.replace(/[^a-zA-Z0-9']/g, "").toLowerCase();
+  return word.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
 function normalize(s: string): string {
-  return s.replace(/[^a-zA-Z0-9']/g, "").toLowerCase();
+  return s.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
 function buildVerseSlots(verse: ChapterVerse): ChapterVerseSlots {

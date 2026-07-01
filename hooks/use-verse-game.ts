@@ -117,8 +117,10 @@ export function getVerseTotalRounds(verse: Verse): number {
   return buildBlankSchedule(blankableCount).length;
 }
 
+// Answers are compared on letters/digits only, so the user never has to type
+// punctuation (apostrophes, hyphens, etc.) that appears in the verse.
 function normalize(s: string): string {
-  return s.replace(/[^a-zA-Z0-9']/g, "").toLowerCase();
+  return s.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
 // Verses always play in fixed (id) order.
