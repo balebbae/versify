@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { verses, type Verse } from "@/lib/verses";
-import { recordVerseProgress } from "@/lib/progress";
+import { recordVerseProgress, loadProgress } from "@/lib/progress";
 
 export type GamePhase = "reading" | "fill";
 
@@ -135,6 +135,9 @@ export function useVerseGame() {
   const [showVerseHint, setShowVerseHint] = useState(false);
   const [fillRound, setFillRound] = useState<FillRoundState | null>(null);
   const [gameComplete, setGameComplete] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
+
+  const toggleShuffle = useCallback(() => setShuffle((s) => !s), []);
 
   const buildFillRound = useCallback(
     (verse: Verse, round: number): FillRoundState => {
@@ -392,9 +395,33 @@ export function useVerseGame() {
     [currentVerse, fillRound, startReading]
   );
 
+  // When shuffle is on, Next jumps to a random verse, preferring ones that
+  // aren't finished yet (roundsCompleted < totalRounds). Records partial
+  // progress for the current verse first, mirroring navigateRelative.
+  const goToNextVerseShuffled = useCallback(() => {
+    if (!currentVerse) return;
+    if (fillRound) {
+      recordVerseProgress(
+        currentVerse.id,
+        fillRound.round - 1,
+        fillRound.totalRounds
+      );
+    }
+    const progress = loadProgress();
+    const others = orderedVerses.filter((v) => v.id !== currentVerse.id);
+    if (others.length === 0) return;
+    const notDone = others.filter((v) => {
+      const p = progress[v.id];
+      return !p || p.roundsCompleted < p.totalRounds;
+    });
+    const pool = notDone.length > 0 ? notDone : others;
+    const target = pool[Math.floor(Math.random() * pool.length)];
+    if (target) startReading(target);
+  }, [currentVerse, fillRound, startReading]);
+
   const goToNextVerse = useCallback(
-    () => navigateRelative(1),
-    [navigateRelative]
+    () => (shuffle ? goToNextVerseShuffled() : navigateRelative(1)),
+    [shuffle, goToNextVerseShuffled, navigateRelative]
   );
   const goToPrevVerse = useCallback(
     () => navigateRelative(-1),
@@ -405,7 +432,9 @@ export function useVerseGame() {
     ? orderedVerses.findIndex((v) => v.id === currentVerse.id)
     : -1;
   const canGoPrev = currentIndex > 0;
-  const canGoNext = currentIndex >= 0 && currentIndex < orderedVerses.length - 1;
+  const canGoNext = shuffle
+    ? currentIndex >= 0 && orderedVerses.length > 1
+    : currentIndex >= 0 && currentIndex < orderedVerses.length - 1;
 
   return {
     currentVerse,
@@ -430,6 +459,8 @@ export function useVerseGame() {
     goToPrevVerse,
     jumpToVerse,
     restartGame: startGame,
+    shuffle,
+    toggleShuffle,
     canGoPrev,
     canGoNext,
   };
